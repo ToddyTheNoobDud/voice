@@ -906,8 +906,7 @@ class Connection extends EventEmitter {
 
     this._silenceKeepaliveTimer = setInterval(() => {
       if (
-        !this.udpInfo ||
-        !this.udpInfo.secretKey ||
+        !this.udpInfo?.secretKey ||
         this.connectedUserIds.size > 0
       ) {
         this._stopSilenceKeepalive()
@@ -1138,8 +1137,8 @@ class Connection extends EventEmitter {
     for (const [ssrc, entry] of this.ssrcs) {
       if (entry?.userId === uid) {
         try {
-          if (entry.stream && !entry.stream.readableEnded) {
-            entry.stream.push(null)
+          if (entry.stream && !entry.stream.destroyed && !entry.stream.writableEnded) {
+            entry.stream.end()
           }
         } catch {}
         this.ssrcs.delete(ssrc)
@@ -1287,15 +1286,25 @@ class Connection extends EventEmitter {
           }
 
           if (packet.equals(OPUS_SILENCE_FRAME)) {
-            if (userData.stream.readableEnded) return
+            if (userData.stream.destroyed || userData.stream.writableEnded) return
             this.emit('speakEnd', userData.userId, ssrc)
-            userData.stream.push(null)
+            userData.stream.end()
           } else {
-            if (userData.stream.readableEnded) {
+            if (
+              userData.stream.readableEnded ||
+              userData.stream.writableEnded ||
+              userData.stream.destroyed
+            ) {
               userData.stream = new PassThrough({ objectMode: true })
               this.emit('speakStart', userData.userId, ssrc)
             }
-            userData.stream.write(packet)
+            try {
+              userData.stream.write(packet)
+            } catch {
+              userData.stream = new PassThrough({ objectMode: true })
+              this.emit('speakStart', userData.userId, ssrc)
+              userData.stream.write(packet)
+            }
           }
         })
 
@@ -1518,7 +1527,7 @@ class Connection extends EventEmitter {
   }
 
   sendAudioChunk(chunk) {
-    if (!this.udpInfo || !this.udpInfo.secretKey) return
+    if (!this.udpInfo?.secretKey) return
 
     if (this.mlsSession) {
       chunk = this.mlsSession.encrypt(chunk)
