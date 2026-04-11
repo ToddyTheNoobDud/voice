@@ -1691,8 +1691,9 @@ class Connection extends EventEmitter {
       this.audioStream = null
     }
 
-    this.statistics = { packetsSent: 0, packetsLost: 0, packetsExpected: 0 }
     this._updatePlayerState({ status: 'idle', reason: reason ?? 'stopped' })
+
+    this.statistics = { packetsSent: 0, packetsLost: 0, packetsExpected: 0 }
 
     for (let i = 0; i < 5; i++) this.sendAudioChunk(OPUS_SILENCE_FRAME)
 
@@ -1732,7 +1733,7 @@ class Connection extends EventEmitter {
         const now = Date.now()
         if (this.player.nextPacket < now - 60) this.player.nextPacket = now
 
-        const chunk = this.audioStream.read(OPUS_FRAME_SIZE)
+        const chunk = this.audioStream.read?.(OPUS_FRAME_SIZE)
 
         if (!chunk && this.audioStream.canStop) {
           if (this.challengeTimeout) {
