@@ -10,13 +10,22 @@ let api = null
   (e.g. not supported platform), it will fallback to libsodium-wrappers. Sodium-native is preffered because it
   allows writing directly into libsodium buffers.
 
-  USAGE: const ok = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
-      out,      // m: output buffer ('out')
+  USAGE ENCRYPT: const clen = sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
+      c,        // c: output buffer for ciphertext
+      m,        // m: input message buffer
+      ad,       // ad: additional data (optional, can be null)
       null,     // nsec: must be null
-      cipher,   // c: ciphertext to decrypt
-      aad,      // ad: additional data (optional, can be null)
-      nonce,    // npub: nonce
-      key       // k: key
+      npub,     // npub: public nonce
+      k         // k: private key
+  )
+
+  USAGE DECRYPT: const mlen = sodium.crypto_aead_xchacha20poly1305_ietf_decrypt(
+      m,        // m: output buffer for message
+      null,     // nsec: must be null
+      c,        // c: input ciphertext buffer
+      ad,       // ad: additional data (optional, can be null)
+      npub,     // npub: public nonce
+      k         // k: private key
   )
 
   SOURCES:
@@ -32,16 +41,16 @@ try {
     kind: 'sodium-native',
     ABYTES,
     crypto_aead_xchacha20poly1305_ietf_encrypt_into(out, msg, aad, nonce, key) {
-      sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(out, null, msg, aad, nonce, key)
+      sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(out, msg, aad, null, nonce, key)
       return out
     },
     crypto_aead_xchacha20poly1305_ietf_encrypt(msg, aad, nonce, key) {
       const out = Buffer.allocUnsafe(msg.length + ABYTES)
       sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(
         out,
-        null,
         msg,
         aad,
+        null,
         nonce,
         key
       )
